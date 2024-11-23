@@ -36,18 +36,18 @@ class EmbeddingDB:
     def __init__(self, *, db_path: Path) -> None:
         self._db_path = db_path
 
-        self._current_json_name: str | None = None
+        self._current_json_name: Path | None = None
         self._current_json_data: dict[str, str] | None = None
 
         self._db_path.mkdir(parents=True, exist_ok=True)
 
-    def _get_json_by_word(self, *, word: str) -> str | None:
+    def _get_json_by_word(self, *, word: str) -> Path:
         first_letter = word[0].lower()
 
         return self._db_path / f"{first_letter}.json"
 
-    def _load_json(self, *, json_name: str) -> None:
-        if self._current_json_name != json_name:
+    def _load_json(self, *, json_name: Path) -> None:
+        if self._current_json_name is None or self._current_json_name != json_name:
             self.flush()
 
             self._current_json_name = json_name
@@ -66,9 +66,10 @@ class EmbeddingDB:
                 json.dump(self._current_json_data, f)
 
     def get_embedding(self, *, word: str) -> Embedding | None:
-        json_name = self._get_json_by_word(word=word)
+        json_name: Path = self._get_json_by_word(word=word)
         self._load_json(json_name=json_name)
 
+        assert self._current_json_data is not None
         emb = self._current_json_data.get(word)
 
         if emb is None:
@@ -80,6 +81,7 @@ class EmbeddingDB:
         json_name = self._get_json_by_word(word=word)
         self._load_json(json_name=json_name)
 
+        assert self._current_json_data is not None
         self._current_json_data[word] = embedding.to_str()
 
     def get_all(self) -> Generator[tuple[str, Embedding], None, None]:
